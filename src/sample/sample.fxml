@@ -9,17 +9,18 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="sample.Controller">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onKeyPressed="#KeyboardPressed" onKeyReleased="#KeyboardReleased" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="sample.Controller">
    <children>
+      <Canvas fx:id="canvas_visual" height="360.0" layoutY="40.0" width="600.0" />
       <Canvas fx:id="canvas_main" height="360.0" layoutY="40.0" onMouseDragged="#mouseDragged" onMouseExited="#onMouseExitedListener" onMousePressed="#pressedOnCanvas" onMouseReleased="#mouseReleased" width="600.0" />
       <ToolBar prefHeight="40.0" prefWidth="600.0">
         <items>
-            <Button fx:id="drawBrush" mnemonicParsing="false" text="Brush" />
-          <Button fx:id="drawCircle" mnemonicParsing="false" text="Circle" />
-            <Button fx:id="drawSquare" mnemonicParsing="false" text="Square" />
-            <Button fx:id="drawTriangle" mnemonicParsing="false" text="Triangle" />
-            <Button fx:id="drawOval" mnemonicParsing="false" text="Oval" />
-            <Button mnemonicParsing="false" text="Clear" />
+            <Button fx:id="BrushButton" mnemonicParsing="false" onAction="#pressBrush" text="Brush" />
+            <Button fx:id="LineButton" mnemonicParsing="false" onAction="#pressLine" text="Line" />
+            <Button fx:id="RectangleButton" mnemonicParsing="false" onAction="#pressRectangle" text="Square" />
+            <Button fx:id="OvalButton" mnemonicParsing="false" onAction="#pressOval" text="Oval" />
+            <Button fx:id="EraserButton" mnemonicParsing="false" onAction="#pressEraser" text="Eraser" />
+            <Button fx:id="ClearButton" mnemonicParsing="false" onAction="#clearCanvas" text="Clear" />
             <CheckBox fx:id="drawFilled" mnemonicParsing="false" selected="true" text="Filled" />
             <ColorPicker fx:id="colorPicker" prefHeight="27.0" prefWidth="55.0" />
             <Slider fx:id="lineSizeSlide" prefWidth="90.0" />
