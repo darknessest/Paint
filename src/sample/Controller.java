@@ -1,5 +1,6 @@
 package sample;
 
+import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.canvas.Canvas;
@@ -8,25 +9,48 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Slider;
+import javafx.scene.image.WritableImage;
 import javafx.scene.input.*;
 import javafx.scene.layout.StackPane;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
+import javax.imageio.ImageIO;
+import java.awt.image.RenderedImage;
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Controller implements Initializable {
+    //************************************
+    //***            BUTTONS           ***
+    //************************************
+    @FXML
+    StackPane stack_pane;
+    //************************************
+    //***           VARIABLES          ***
+    //************************************
+    private GraphicsContext canvBack, canvVisual;
+    private ArrayList<Strokes.stroke> strokes = new ArrayList<>(15);
+    private int level;
+    private double startX, startY, lastX, lastY, oldX, oldY;
+    private boolean curDrawingBrush, curDrawingLine, curDrawingRectangle, curDrawingOval, curErasing;
+
+    private KeyCombination keyCombCtrZ = new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN);
+    private KeyCombination keyCombCtrY = new KeyCodeCombination(KeyCode.Y, KeyCombination.SHORTCUT_DOWN);
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         //two-layered system
-//        canvBack = canvas_main.getGraphicsContext2D();
-//        canvVisual = canvas_visual.getGraphicsContext2D();
+        canvVisual = canvas_visual.getGraphicsContext2D();
+        canvBack = canvas_main.getGraphicsContext2D();
+        level = 0;
 
-        //don't touch layer 0
-        layers.add(canvas_visual.getGraphicsContext2D());//0
-        layers.add(canvas_main.getGraphicsContext2D());//1
-
-
+        //Slider min and max
         lineSizeSlide.setMin(1);
         lineSizeSlide.setMax(50);
 
@@ -35,22 +59,6 @@ public class Controller implements Initializable {
         curDrawingRectangle = false;
         curDrawingOval = false;
     }
-
-    //************************************
-    //***           VARIABLES          ***
-    //************************************
-//    private GraphicsContext canvBack, canvVisual;
-    private ArrayList<GraphicsContext> layers = new ArrayList<GraphicsContext>(10);
-    private double startX, startY, lastX, lastY, oldX, oldY;
-    private boolean curDrawingBrush, curDrawingLine, curDrawingRectangle, curDrawingOval, curErasing;
-    //For ctrl+z
-
-    private KeyCombination keyCombCtrZ = new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN);
-    private KeyCombination keyCombCtrY = new KeyCodeCombination(KeyCode.Y, KeyCombination.SHORTCUT_DOWN);
-
-    //************************************
-    //***            BUTTONS           ***
-    //************************************
     @FXML
     Canvas canvas_main, canvas_visual;
     @FXML
@@ -65,15 +73,16 @@ public class Controller implements Initializable {
     //*****************************************
     //***          Keyboard controls        ***
     //*****************************************
-
-    //TODO undo/redo
+    //TODO clear last x and y, so it won't draw new rectangles on new tapping
     @FXML
     public void KeyboardPressed(KeyEvent e) {
         if (keyCombCtrZ.match(e) || keyCombCtrY.match(e)) {
-            //    TODO layers
+            strokes.remove(--level);
             clearCanvas();
-            layers.remove(1);
-            System.out.println("Ctrl+Z/Y is pressed");
+            strokes.forEach(x -> x.reDraw(canvBack));
+            System.out.println("Ctrl/Cmd + Z is pressed");
+
+//            }
         }
     }
 
@@ -88,27 +97,30 @@ public class Controller implements Initializable {
 
     @FXML
     public void pressedOnCanvas(MouseEvent e) {
-//        lastState = canvBack;
-//        System.out.println("added on stack");
-
         this.startX = e.getX();
         this.startY = e.getY();
         this.oldX = e.getX();
         this.oldY = e.getY();
+        if (curDrawingBrush) {
+            strokes.add(new Strokes.brush());
+            level++;
+        }
+        if (curErasing) {
+            strokes.add(new Strokes.eraser());
+            level++;
+        }
     }
 
     @FXML
     public void mouseReleased(MouseEvent e) {
-//        canvBack.save();
-//        System.out.println("added on stack");
-
-        layers.get(0).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+        canvVisual.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
         if (curDrawingLine)
             drawLine();
         if (curDrawingRectangle)
             drawRectangle();
         if (curDrawingOval)
             drawOval();
+
     }
 
     @FXML
@@ -185,14 +197,33 @@ public class Controller implements Initializable {
 
     @FXML
     private void clearCanvas() {
-        layers.get(1).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
-        layers.get(0).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+        canvBack.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+        canvVisual.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
     }
 
     @FXML
     public void saveCanvas() {
         //TODO finish saving button
-        StackPane root = new StackPane();
+        FileChooser fileChooser = new FileChooser();
+
+        //Set extension filter
+        FileChooser.ExtensionFilter extFilter =
+                new FileChooser.ExtensionFilter("png files (*.png)", "*.png");
+        fileChooser.getExtensionFilters().add(extFilter);
+
+        //Show save file dialog
+        File file = fileChooser.showSaveDialog(new Stage());
+
+        if (file != null) {
+            try {
+                WritableImage writableImage = new WritableImage((int) canvas_main.getWidth(), (int) canvas_main.getHeight());
+                canvas_main.snapshot(null, writableImage);
+                RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
+                ImageIO.write(renderedImage, "png", file);
+            } catch (IOException ex) {
+                Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
     }
 
 
@@ -201,59 +232,70 @@ public class Controller implements Initializable {
     //*****************************************
 
     private void drawBrush() {
-        layers.get(1).setLineWidth(lineSizeSlide.getValue());
-        layers.get(1).setStroke(colorPicker.getValue());
-        layers.get(1).strokeLine(oldX, oldY, lastX, lastY);
+        ((Strokes.brush) strokes.get(level - 1)).brushes.add(new Strokes.brush(oldX, oldY, lastX, lastY, lineSizeSlide.getValue(), false, colorPicker.getValue()));
+        canvBack.setLineWidth(lineSizeSlide.getValue());
+        canvBack.setStroke(colorPicker.getValue());
+        canvBack.strokeLine(oldX, oldY, lastX, lastY);
         oldX = lastX;
         oldY = lastY;
     }
 
     private void drawLine() {
-        layers.get(1).setLineWidth(lineSizeSlide.getValue());
-        layers.get(1).setStroke(colorPicker.getValue());
-        layers.get(1).strokeLine(startX, startY, lastX, lastY);
+        canvBack.setLineWidth(lineSizeSlide.getValue());
+        canvBack.setStroke(colorPicker.getValue());
+        canvBack.strokeLine(startX, startY, lastX, lastY);
+        strokes.add(new Strokes.line(startX, startY, lastX, lastY, lineSizeSlide.getValue(), false, colorPicker.getValue()));
+        level++;
     }
 
     private void drawRectangle() {
         double wh = lastX - startX;
         double hg = lastY - startY;
-        layers.get(1).setLineWidth(lineSizeSlide.getValue());
+        canvBack.setLineWidth(lineSizeSlide.getValue());
 
         double cornerX = (wh > 0 ? startX : startX + wh);
         double cornerY = (hg > 0 ? startY : startY + hg);
+        wh = Math.abs(wh);
+        hg = Math.abs(hg);
 
         if (drawFilled.isSelected()) {
-            layers.get(1).setFill(colorPicker.getValue());
-            layers.get(1).fillRect(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvBack.setFill(colorPicker.getValue());
+            canvBack.fillRect(cornerX, cornerY, wh, hg);
+
         } else {
-            layers.get(1).setStroke(colorPicker.getValue());
-            layers.get(1).strokeRect(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvBack.setStroke(colorPicker.getValue());
+            canvBack.strokeRect(cornerX, cornerY, wh, hg);
         }
+        strokes.add(new Strokes.rectangular(wh, hg, cornerX, cornerY, lineSizeSlide.getValue(), drawFilled.isSelected(), colorPicker.getValue()));
+        level++;
     }
 
     private void drawOval() {
         double wh = lastX - startX;
         double hg = lastY - startY;
-        layers.get(1).setLineWidth(lineSizeSlide.getValue());
+        canvBack.setLineWidth(lineSizeSlide.getValue());
 
         double cornerX = (wh > 0 ? startX : startX + wh);
         double cornerY = (hg > 0 ? startY : startY + hg);
+        wh = Math.abs(wh);
+        hg = Math.abs(hg);
 
         if (drawFilled.isSelected()) {
-            layers.get(1).setFill(colorPicker.getValue());
-            layers.get(1).fillOval(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvBack.setFill(colorPicker.getValue());
+            canvBack.fillOval(cornerX, cornerY, wh, hg);
         } else {
-            layers.get(1).setStroke(colorPicker.getValue());
-            layers.get(1).strokeOval(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvBack.setStroke(colorPicker.getValue());
+            canvBack.strokeOval(cornerX, cornerY, wh, hg);
         }
+        strokes.add(new Strokes.oval(wh, hg, cornerX, cornerY, lineSizeSlide.getValue(), drawFilled.isSelected(), colorPicker.getValue()));
+        level++;
     }
 
     private void erasing() {
-        layers.get(1).clearRect(lastX, lastY, 10, 10);
-        layers.get(0).clearRect(lastX, lastY, 10, 10);
+        double width = lineSizeSlide.getValue();
+        canvBack.clearRect(lastX, lastY, width, width);
         oldX = lastX;
         oldY = lastY;
-        System.out.printf("%f - %f : %f - %f\n", lastX, lastY, lastX + 5, lastY + 5);
     }
 
 
@@ -262,28 +304,28 @@ public class Controller implements Initializable {
     //*****************************************
 
     private void drawLineVisual() {
-        layers.get(0).setLineWidth(lineSizeSlide.getValue());
-        layers.get(0).setStroke(colorPicker.getValue());
-        layers.get(0).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
-        layers.get(0).strokeLine(startX, startY, lastX, lastY);
+        canvVisual.setLineWidth(lineSizeSlide.getValue());
+        canvVisual.setStroke(colorPicker.getValue());
+        canvVisual.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+        canvVisual.strokeLine(startX, startY, lastX, lastY);
     }
 
     private void drawOvalVisual() {
         double wh = lastX - startX;
         double hg = lastY - startY;
-        layers.get(0).setLineWidth(lineSizeSlide.getValue());
+        canvVisual.setLineWidth(lineSizeSlide.getValue());
 
         double cornerX = (wh > 0 ? startX : startX + wh);
         double cornerY = (hg > 0 ? startY : startY + hg);
 
         if (drawFilled.isSelected()) {
-            layers.get(0).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
-            layers.get(0).setFill(colorPicker.getValue());
-            layers.get(0).fillOval(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvVisual.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+            canvVisual.setFill(colorPicker.getValue());
+            canvVisual.fillOval(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
         } else {
-            layers.get(0).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
-            layers.get(0).setStroke(colorPicker.getValue());
-            layers.get(0).strokeOval(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvVisual.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+            canvVisual.setStroke(colorPicker.getValue());
+            canvVisual.strokeOval(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
         }
 
     }
@@ -291,19 +333,19 @@ public class Controller implements Initializable {
     private void drawRectVisual() {
         double wh = lastX - startX;
         double hg = lastY - startY;
-        layers.get(0).setLineWidth(lineSizeSlide.getValue());
+        canvVisual.setLineWidth(lineSizeSlide.getValue());
 
         double cornerX = (wh > 0 ? startX : startX + wh);
         double cornerY = (hg > 0 ? startY : startY + hg);
 
         if (drawFilled.isSelected()) {
-            layers.get(0).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
-            layers.get(0).setFill(colorPicker.getValue());
-            layers.get(0).fillRect(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvVisual.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+            canvVisual.setFill(colorPicker.getValue());
+            canvVisual.fillRect(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
         } else {
-            layers.get(0).clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
-            layers.get(0).setStroke(colorPicker.getValue());
-            layers.get(0).strokeRect(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
+            canvVisual.clearRect(0, 0, canvas_main.getWidth(), canvas_main.getHeight());
+            canvVisual.setStroke(colorPicker.getValue());
+            canvVisual.strokeRect(cornerX, cornerY, Math.abs(wh), Math.abs(hg));
         }
     }
 }

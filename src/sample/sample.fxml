@@ -11,8 +11,14 @@
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onKeyPressed="#KeyboardPressed" onKeyReleased="#KeyboardReleased" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="sample.Controller">
    <children>
-      <Canvas fx:id="canvas_visual" height="560.0" layoutY="40.0" width="800.0" />
-      <Canvas fx:id="canvas_main" height="560.0" layoutY="40.0" onMouseDragged="#mouseDragged" onMouseExited="#onMouseExitedListener" onMousePressed="#pressedOnCanvas" onMouseReleased="#mouseReleased" width="800.0" />
+       <StackPane fx:id="stack_pane" layoutY="40.0">
+           <children>
+               <Canvas fx:id="canvas_visual" height="560.0" layoutY="40.0" width="800.0"/>
+               <Canvas fx:id="canvas_main" height="560.0" layoutY="40.0" onMouseDragged="#mouseDragged"
+                       onMouseExited="#onMouseExitedListener" onMousePressed="#pressedOnCanvas"
+                       onMouseReleased="#mouseReleased" width="800.0"/>
+           </children>
+       </StackPane>
       <ToolBar prefHeight="40.0" prefWidth="800.0">
         <items>
             <Button fx:id="BrushButton" mnemonicParsing="false" onAction="#pressBrush" text="Brush" />
