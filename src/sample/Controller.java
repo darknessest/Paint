@@ -59,6 +59,7 @@ public class Controller implements Initializable {
         curDrawingRectangle = false;
         curDrawingOval = false;
     }
+
     @FXML
     Canvas canvas_main, canvas_visual;
     @FXML
@@ -77,12 +78,13 @@ public class Controller implements Initializable {
     @FXML
     public void KeyboardPressed(KeyEvent e) {
         if (keyCombCtrZ.match(e) || keyCombCtrY.match(e)) {
-            strokes.remove(--level);
-            clearCanvas();
-            strokes.forEach(x -> x.reDraw(canvBack));
-            System.out.println("Ctrl/Cmd + Z is pressed");
+            if (level > 0) {
+                strokes.remove(--level);
+                clearCanvas();
+                strokes.forEach(x -> x.reDraw(canvBack));
+                System.out.println("Ctrl/Cmd + Z is pressed");
 
-//            }
+            }
         }
     }
 
@@ -203,7 +205,6 @@ public class Controller implements Initializable {
 
     @FXML
     public void saveCanvas() {
-        //TODO finish saving button
         FileChooser fileChooser = new FileChooser();
 
         //Set extension filter
