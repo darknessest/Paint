@@ -90,7 +90,7 @@ public class Controller implements Initializable {
 
     @FXML
     public void KeyboardReleased(KeyEvent e) {
-        System.out.println("released");
+//        System.out.println("released");
     }
 
     //*****************************************
@@ -294,6 +294,9 @@ public class Controller implements Initializable {
 
     private void erasing() {
         double width = lineSizeSlide.getValue();
+        ((Strokes.eraser) strokes.get(level - 1)).erases.add(new Strokes.eraser(lastX, lastY, width, width, 0, false, null));
+
+
         canvBack.clearRect(lastX, lastY, width, width);
         oldX = lastX;
         oldY = lastY;

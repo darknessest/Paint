@@ -131,13 +131,21 @@ class Strokes {
     }
 
     public static class eraser extends stroke {
+        public ArrayList<eraser> erases = new ArrayList<>(10000);
+
         public eraser() {
             super(0, 0, 0, 0, 0, false, null);
         }
 
+        public eraser(double wh, double hg, double cornerX, double cornerY, double brushWidth, boolean isFilled, Paint color) {
+            super(wh, hg, cornerX, cornerY, brushWidth, isFilled, color);
+        }
+
         @Override
         void reDraw(GraphicsContext gc) {
-
+            for (eraser x : erases) {
+                gc.clearRect(x.getWh(), x.getHg(), x.getCornerX(), x.getCornerY());
+            }
         }
     }
 }
